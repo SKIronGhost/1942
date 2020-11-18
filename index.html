@@ -73,8 +73,8 @@
 		<div id='bullets'>
 		</div>	
 	</div>
-
-	<div id='score'>100</div>
+	<div id='explode'></div>
+	<div id='score'></div>
 
 
 <script>
@@ -86,29 +86,49 @@
 	var enemies1 = []
 	var enemies2 = []
 	var bullet = []
+	var explosion = []
 	var count = 0
+	var counter = 0
+	var score = 0
+	
 	var enemiesCreator1 = setInterval(function(){
-		
 		enemies1.push({x:Math.floor(Math.random() * 970 + 10),y:8})
 		count++
 		if(count == 60){
-			clearInterval(enemiesCreator1)
+			clearInterval(enemiesCreator1)	
 		}
 	},800)
-
-	var enemiesCreator2 = setInterval(function(){
-		enemies2.push({x:5,y:8})
-		if(enemies2.length == 10){
-			clearInterval(enemiesCreator2)
-		}
-	},350)
-
-	var timingEnemies = setInterval(function(){
+	
+	var timing = setInterval(function(){
 		displayHero()
 		displayEnemies()
 		shooting()
+		displayScore()
+		detectCollide()
 	}, 50);
 
+	var timingEnemies = setInterval(function(){
+		createEnemy2()
+		counter++
+		if(counter == 5){
+			clearInterval(timingEnemies)
+		}
+	}, 12000)
+
+	function createEnemy2(){
+		var enemiesCreator2 = setInterval(function create(){
+			if(enemies2.length == 0){
+				enemies2.push({x:5,y:Math.floor(Math.random() * 100)})
+			}
+			else if(enemies2.length == 10){
+				clearInterval(enemiesCreator2)
+			}
+			else if(enemies2.length > 0){
+				enemies2.push({x:5,y:enemies2[0].y})
+			}
+		},350)
+	}
+	
 	function displayHero(){
 		document.getElementById('hero').style['top'] = hero.y + "px"
 		document.getElementById('hero').style['left'] = hero.x + "px"
@@ -128,17 +148,22 @@
 		}
 		for(i=0;i<enemies2.length;i++){
 			outputB += "<div class='enemy2' style='top:"+enemies2[i].y+"px; left:"+enemies2[i].x+"px;'></div>"
-			if(enemies2[i].x > 973){
+			if(enemies2[i].x > 974){	
+				enemies2.shift()
+			}
+			else if(enemies2[i].x < 5 ){
+				enemies2.shift()
+			}
+			else if(direction == "Left"){
 				enemies2[i].y += 1
 				enemies2[i].x -= 5
 			}
-			if(enemies2[i].x > 4 ){
+			else if(direction == "Right" ){
 				enemies2[i].y += 1
 				enemies2[i].x += 5
 			}
-			if(enemies2[i].y > 530){
-				enemies2[i].y = 8
-				enemies2[i].x = 5
+			if(enemies2[i].y > 529){
+				enemies2.shift()
 			}
 		}
 		document.getElementById('enemies').innerHTML = outputA + outputB
@@ -154,52 +179,125 @@
 					bullet.shift()
 				}
 			}
-			
 			for(i=0;i<bullet.length;i++){
 				for(j=0;j<enemies1.length;j++){
 					if(bullet.length > 0)
-					if(Math.abs(bullet[i].x - (enemies1[j].x+5)) < 15 && Math.abs(bullet[i].y-enemies1[j].y) < 5){
-					enemies1.splice([j],1)
-					outputB += "<div class='explosion' style='top:"+enemies1[j].y+"px; left:"+enemies1[j].x+"px;'></div>"
-					enemies1.splice([j],1)
-					bullet.splice([i],1)
 					
+					if(Math.abs(bullet[i].x - (enemies1[j].x+5)) < 15 && Math.abs(bullet[i].y-enemies1[j].y) < 5){
+						var audio = new Audio('explosion.mp3')
+						audio.play()
+						explosion.push({x:enemies1[j].x,y:enemies1[j].y})
+						score +=10
+						enemies1.splice([j],1)
+						bullet.splice([i],1)
+						outputB += "<div class='explosion' style='top:"+explosion[0].y+"px; left:"+explosion[0].x+"px;'></div>"
+						document.getElementById('explode').innerHTML = outputB
+						explosion.pop()
+						setTimeout(function(){
+							outputB = ''
+							document.getElementById('explode').innerHTML = outputB
+						},800)
 					}
 				}
 			}
+
 			for(i=0;i<bullet.length;i++){
 				for(j=0;j<enemies2.length;j++){
 					if(bullet.length > 0)
 					if(Math.abs(bullet[i].x - (enemies2[j].x+5)) < 15 && Math.abs(bullet[i].y-enemies2[j].y) < 5){
-					enemies2.splice([j],1)
-					bullet.splice([i],1)
+						var audio = new Audio('explosion.mp3')
+						audio.play()
+						if(audio.currentTime > 0.6){
+							audio.pause()
+						}
+						explosion.push({x:enemies2[j].x,y:enemies2[j].y})
+						score +=10
+						enemies2.splice([j],1)
+						bullet.splice([i],1)
+						outputB += "<div class='explosion' style='top:"+explosion[0].y+"px; left:"+explosion[0].x+"px;'></div>"
+						document.getElementById('explode').innerHTML = outputB
+						explosion.pop()
+						setTimeout(function(){
+							outputB = ''
+							document.getElementById('explode').innerHTML = outputB
+						},800)
 					}
 				}
 			}
 			document.getElementById('bullets').innerHTML = outputA
-			// document.getElementById('enemies').innerHTML = outputB
+	}
+
+	function detectCollide(){
+		let outputA = ''
+		let outputB = ''
+		for(i=0;i<enemies1.length;i++){
+			if(Math.abs(hero.x - (enemies1[i].x+5)) < 15 && Math.abs(hero.y-enemies1[i].y) < 10){
+				var audio = new Audio('explosion.mp3')
+				audio.play()
+				explosion.push({x:enemies1[i].x,y:enemies1[i].y})
+				score -= 500
+				enemies1.splice([i],1)
+				outputA += "<div class='explosion' style='top:"+hero.y+"px; left:"+hero.x+"px;'></div>"
+				outputB += "<div class='explosion' style='top:"+explosion[0].y+"px; left:"+explosion[0].x+"px;'></div>"
+				document.getElementById('explode').innerHTML = outputA + outputB
+				explosion.pop()
+				hero = {
+					x: 500,
+					y: 480
+				}
+				setTimeout(function(){
+					outputB = ''
+					document.getElementById('explode').innerHTML = outputB
+				},800)
+			}
+		}
+		for(i=0;i<enemies2.length;i++){
+			if(Math.abs(hero.x - (enemies2[i].x+5)) < 15 && Math.abs(hero.y-enemies2[i].y) < 10){
+				var audio = new Audio('explosion.mp3')
+				audio.play()
+				explosion.push({x:enemies2[i].x,y:enemies2[i].y})
+				score -= 500
+				enemies2.splice([i],1)
+				outputA += "<div class='explosion' style='top:"+hero.y+"px; left:"+hero.x+"px;'></div>"
+				outputB += "<div class='explosion' style='top:"+explosion[0].y+"px; left:"+explosion[0].x+"px;'></div>"
+				document.getElementById('explode').innerHTML = outputA + outputB
+				explosion.pop()
+				hero = {
+					x: 500,
+					y: 480
+				}
+				setTimeout(function(){
+					outputB = ''
+					document.getElementById('explode').innerHTML = outputB
+				},800)
+			}
+		}
+	}
+
+	function displayScore(){
+		document.getElementById('score').innerHTML = score	
 	}
 
 	document.onkeydown = function moveHero(e){
 		if(e.keyCode==37 && hero.x>10){//LEFT
 			hero.x-= 10
-      }
-      else if(e.keyCode==38 && hero.y>10){//UP
-        hero.y-=10
-      }
-      else if(e.keyCode==39 && hero.x<980){//RIGHT
-        hero.x+=10
-      }
-			else if(e.keyCode==40 && hero.y<530){//DOWN
-        hero.y+=10
-      }
-			else if(e.keyCode==32){//SHOOT
-				bullet.push({x:hero.x+5,y:hero.y-15})
-				shooting()
-			}
-			displayHero()
+		}
+		if(e.keyCode==38 && hero.y>10){//UP
+			hero.y-=10
+		}
+		if(e.keyCode==39 && hero.x<980){//RIGHT
+			hero.x+=10
+		}
+		if(e.keyCode==40 && hero.y<530){//DOWN
+			hero.y+=10
+		}
+		if(e.keyCode==32){//SHOOT
+			bullet.push({x:hero.x+5,y:hero.y-15})
+			shooting()
+		}
+		displayHero()
 	}
-
+	createEnemy2()
 
 </script>
 
